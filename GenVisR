@@ -1,0 +1,5 @@
+## GenVisR - waterfall plot
+
+mutation_data <- read.table("path",header = T, sep = "\t")
+colnames(mutation_data)[c(1,8,12)] <- c("sample","gene_name","trv_type")
+waterfall(mutation_data, fileType = "MGI", mainXlabel = T, mainLabelCol = "amino.acid.change", mainLabelSize = 2)
