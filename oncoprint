@@ -42,6 +42,73 @@ close(pb)
 mat[mat==0] <- ""
 colnames(mat) <- substr(colnames(mat),1,12)
 
+mat[is.na(mat)] <- ""
+mat[1:3,1:3]
+
+alter_fun <- list(
+  background <- function(x,y,w,h) {
+    grid.rect(x,y,w-unit(0.5,"mm"),h-unit(0.5,"mm"),gp = gpar(fill = "#CCCCCC", col = NA))
+  },
+  SNP = function(x,y,w,h) {
+    grid.rect(x,y,w-unit(0.5,"mm"),h-unit(0.5,"mm"),gp = gpar(fill = "blue", col = NA))
+  },
+  DEL = function(x, y, w, h){
+    grid.rect(x, y, w-unit(0.5, "mm"), h-unit(0.5, "mm"), gp = gpar(fill = "red", col = NA))
+  },
+  INS = function(x, y, w, h) {
+    grid.rect(x, y, w-unit(0.5, "mm"), h*0.33, gp = gpar(fill = "#008000", col = NA))
+  }
+)
+
+col = c("INS" = "#008000", "DEL" = "red", "SNP" = "blue")
+
+clin.gbm <- GDCquery_clinic("TCGA-GBM","clinical")
+clin.lgg <- GDCquery_clinic("TCGA-LGG","clinical")
+clinical <- plyr::rbind.fill(clin.lgg,clin.gbm)
+annotation <- clinical[match(colnames(mat),clinical$bcr_patient_barcode),
+                       c("disease","vital_status","ethnicity")]
+annotation <- HeatmapAnnotation(annotation_height = rep(unit(0.3,"cm"),ncol(annotation)),
+                                df = annotation,
+                                col = list(disease = c("LGG"="green",
+                                                       "GBM"="orange"),
+                                           vital_status = c("alive"="blue",
+                                                            "dead"="red",
+                                                            "not reported"="grey"),
+                                           ethnicity = c("hispanic or latino"="purple",
+                                                         "not hispanic or latino"="black",
+                                                         "not reported"="grey")),
+                                annotation_legend_param = list(title_gp = gpar(fontsize = 16,fontface = "bold"),
+                                                               labels_gp = gpar(fontsize = 16)
+                                                               ))
+
+pdf("LGG_GBM_oncoprint.pdf",width = 20, height = 20)
+p <- oncoPrint(mat, get_type = function(x){strsplit(x,";")[[1]]},
+  remove_empty_columns = FALSE,
+  column_order = NULL,
+  alter_fun = alter_fun, col = col,
+  row_names_gp = gpar(fontsize = 16),
+  pct_gp = gpar(fontsize = 16),
+  axis_gp = gpar(fontsize = 16),
+  column_title = "OncoPrint for TCGA LGG, genes in Glioma signalling",
+  column_title_gp = gpar(fontsize = 22),
+  pct_digits = 2,
+  row_barplot_width = unit(4,"cm"),
+  bottom_annotation = annotation,
+  heatmap_legend_param = list(title = "Mutations", at = c("DEL","INS","SNP"),
+                              labels = c("DEL","INS","SNP"),
+                              title_gp = gpar(fontsize = 16, fontface = "bold"),
+                              labels_gp = gpar(fontsize =16),
+                              grid_height = unit(8,"mm")
+                              ),
+  column_bar = anno_oncoprint_barplot(type= NULL, border= TRUE,
+                                      axis_param = list(side = "right", 
+                                                        gp= gpar(fontsize= 18)))
+  )
+draw(p,annotation_legend_side = "bottom")
+
+mat[mat==0] <- ""
+colnames(mat) <- substr(colnames(mat),1,12)
+
 mat[is.na(mat)] = ""
 mat[1:3,1:3]
 
