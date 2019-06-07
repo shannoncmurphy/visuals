@@ -1,0 +1,8 @@
+library(maftools)
+#Download mutation annotation format (MAF) files
+LGGmut.maf <- GDCquery_Maf(tumor = "LGG", pipelines = "mutect2")
+GBMmut.maf <- GDCquery_Maf(tumor = "GBM", pipelines = "mutect2")
+
+#merge them
+gbm_lgg_mut <- plyr::rbind.fill(LGGmut.maf,GBMmut.maf)
+save(gbm_lgg_mut,file = "mafMutect2LGGGBM.rda",compress = "xz")
