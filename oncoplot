@@ -1,8 +1,46 @@
 library(maftools)
+BiocManager::install("TCGAWorkflow")
+library(TCGAWorkflowData)
+library(DT)
+
 #Download mutation annotation format (MAF) files
 LGGmut.maf <- GDCquery_Maf(tumor = "LGG", pipelines = "mutect2")
 GBMmut.maf <- GDCquery_Maf(tumor = "GBM", pipelines = "mutect2")
 
 #merge them
 gbm_lgg_mut <- plyr::rbind.fill(LGGmut.maf,GBMmut.maf)
-save(gbm_lgg_mut,file = "mafMutect2LGGGBM.rda",compress = "xz")
+save(maf,file = "mafMutect2LGGGBM.rda",compress = "xz")
+
+#recover data fom package
+data(mafMutect2LGGGBM)
+
+#clinical data
+lgg_clin <- GDCquery_clinic(project = "TCGA-LGG", type = "Clinical")
+gbm_clin <- GDCquery_clinic(project = "TCGA-GBM", type = "Clinical")
+
+#Bind results to make columns the same
+clinical_gbm_lgg <- plyr::rbind.fill(gbm_clin,lgg_clin)
+colnames(clinical_gbm_lgg)[1] <- "Tumor_Sample_Barcode"
+clinical_gbm_lgg$Overall_Survival_Status <- 1
+clinical_gbm_lgg$Overall_Survival_Status[which(clinical_gbm_lgg$vital_status != "dead")] <- 0
+clinical_gbm_lgg$time <- clinical_gbm_lgg$days_to_death
+clinical_gbm_lgg$time[is.na(clinical_gbm_lgg$days_to_death)] <- clinical_gbm_lgg$days_to_last_follow_up[is.na(clinical_gbm_lgg$days_to_death)]
+
+#create object to use in maftools
+maf <- read.maf(maf = gbm_lgg_mut, clinicalData = clinical_gbm_lgg, isTCGA = T)
+
+#plot MAF summary
+plotmafSummary(maf = maf,
+               addStat = "median",
+               dashboard = TRUE)
+
+gbm.subtypes <- TCGAquery_subtype(tumor = "gbm")
+lgg.subtypes <- TCGAquery_subtype(tumor = "lgg")
+subtype.info <- plyr::rbind.fill(lgg.subtypes,gbm.subtypes)
+colnames(subtype.info)[1] <- "Tumor_Sample_Barcode"
+
+oncoplot(maf = maf,
+         top = 20,
+         legendFontSize = 8,
+         clinicalFeatures = c("Supervised.DNA.Methylation.Cluster","Original.Subtype"),
+         annotationDat = subtype.info) #data frame with metadata
